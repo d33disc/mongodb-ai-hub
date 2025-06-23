@@ -1,0 +1,216 @@
+{
+  "name": "AI Data Hub Dashboard",
+  "layout": {
+    "root": {
+      "children": [
+        {
+          "name": "tabbedContainer1",
+          "children": [
+            {
+              "name": "promptsTab",
+              "children": [
+                {
+                  "name": "promptsTable",
+                  "properties": {
+                    "data": "{{getAllPrompts.value}}",
+                    "columns": [
+                      {
+                        "id": "title",
+                        "name": "Title"
+                      },
+                      {
+                        "id": "category",
+                        "name": "Category"
+                      },
+                      {
+                        "id": "model",
+                        "name": "Model"
+                      },
+                      {
+                        "id": "createdAt",
+                        "name": "Created At",
+                        "format": "date"
+                      }
+                    ],
+                    "title": "Prompts"
+                  }
+                },
+                {
+                  "name": "promptActions",
+                  "children": [
+                    {
+                      "name": "addPromptButton",
+                      "properties": {
+                        "text": "Add Prompt",
+                        "onClick": "{{openAddPromptModal.trigger()}}"
+                      }
+                    },
+                    {
+                      "name": "editPromptButton",
+                      "properties": {
+                        "text": "Edit",
+                        "onClick": "{{openEditPromptModal.trigger()}}",
+                        "disabled": "{{!promptsTable.selectedRow}}"
+                      }
+                    },
+                    {
+                      "name": "deletePromptButton",
+                      "properties": {
+                        "text": "Delete",
+                        "onClick": "{{deletePrompt.trigger()}}",
+                        "disabled": "{{!promptsTable.selectedRow}}",
+                        "style": "danger"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "promptSearchContainer",
+                  "children": [
+                    {
+                      "name": "promptSearchInput",
+                      "properties": {
+                        "placeholder": "Search prompts...",
+                        "onChange": "{{searchPrompts.trigger()}}"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "vectorStoresTab",
+              "children": [
+                {
+                  "name": "vectorStoresTable",
+                  "properties": {
+                    "data": "{{getAllVectorStores.value}}",
+                    "columns": [
+                      {
+                        "id": "name",
+                        "name": "Name"
+                      },
+                      {
+                        "id": "description",
+                        "name": "Description"
+                      },
+                      {
+                        "id": "model",
+                        "name": "Model"
+                      },
+                      {
+                        "id": "vectorDimension",
+                        "name": "Dimensions"
+                      },
+                      {
+                        "id": "embeddingsCount",
+                        "name": "Embeddings",
+                        "format": "number",
+                        "value": "{{item.embeddings.length}}"
+                      }
+                    ],
+                    "title": "Vector Stores"
+                  }
+                },
+                {
+                  "name": "vectorStoreActions",
+                  "children": [
+                    {
+                      "name": "addVectorStoreButton",
+                      "properties": {
+                        "text": "Add Vector Store",
+                        "onClick": "{{openAddVectorStoreModal.trigger()}}"
+                      }
+                    },
+                    {
+                      "name": "manageEmbeddingsButton",
+                      "properties": {
+                        "text": "Manage Embeddings",
+                        "onClick": "{{openEmbeddingsModal.trigger()}}",
+                        "disabled": "{{!vectorStoresTable.selectedRow}}"
+                      }
+                    },
+                    {
+                      "name": "deleteVectorStoreButton",
+                      "properties": {
+                        "text": "Delete",
+                        "onClick": "{{deleteVectorStore.trigger()}}",
+                        "disabled": "{{!vectorStoresTable.selectedRow}}",
+                        "style": "danger"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "events": [],
+  "resources": [
+    {
+      "name": "promptResource",
+      "config": {
+        "baseURL": "http://localhost:3000/api",
+        "path": "/prompts",
+        "method": "GET"
+      }
+    },
+    {
+      "name": "vectorStoreResource",
+      "config": {
+        "baseURL": "http://localhost:3000/api",
+        "path": "/vectorstores",
+        "method": "GET"
+      }
+    }
+  ],
+  "queries": [
+    {
+      "name": "getAllPrompts",
+      "resourceName": "promptResource",
+      "triggers": ["onInit", "promptsTab.onShow"]
+    },
+    {
+      "name": "getAllVectorStores",
+      "resourceName": "vectorStoreResource",
+      "triggers": ["onInit", "vectorStoresTab.onShow"]
+    },
+    {
+      "name": "deletePrompt",
+      "resourceName": "promptResource",
+      "config": {
+        "path": "/prompts/{{promptsTable.selectedRow._id}}",
+        "method": "DELETE"
+      },
+      "triggers": [],
+      "success": "{{getAllPrompts.trigger()}}"
+    },
+    {
+      "name": "deleteVectorStore",
+      "resourceName": "vectorStoreResource",
+      "config": {
+        "path": "/vectorstores/{{vectorStoresTable.selectedRow._id}}",
+        "method": "DELETE"
+      },
+      "triggers": [],
+      "success": "{{getAllVectorStores.trigger()}}"
+    },
+    {
+      "name": "searchPrompts",
+      "resourceName": "promptResource",
+      "config": {
+        "path": "/prompts/search/text?query={{promptSearchInput.value}}",
+        "method": "GET"
+      },
+      "triggers": [],
+      "success": "{{promptsTable.data = data}}"
+    }
+  ],
+  "temporaryState": {
+    "currentPrompt": {},
+    "currentVectorStore": {}
+  }
+}
