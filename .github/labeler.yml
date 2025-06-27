@@ -1,0 +1,77 @@
+# 🏷️ Auto-labeling configuration for MongoDB AI Hub
+
+# Documentation changes
+documentation:
+  - '**/*.md'
+  - 'docs/**/*'
+
+# Core API changes  
+api:
+  - 'src/api/**/*'
+  - 'src/routes/**/*'
+
+# Authentication & security
+security:
+  - 'src/middleware/auth.js'
+  - 'src/utils/jwt.js'
+  - '**/auth*'
+
+# Database & models
+database:
+  - 'src/models/**/*'
+  - 'src/config/db.js'
+  - '**/mongo*'
+
+# Testing
+testing:
+  - 'tests/**/*'
+  - '**/*.test.js'
+  - '**/*.spec.js'
+  - 'jest.config.js'
+
+# CI/CD & DevOps
+devops:
+  - '.github/**/*'
+  - '.devcontainer/**/*'
+  - 'Dockerfile*'
+  - 'docker-compose*'
+  - '.gitpod.yml'
+  - '.replit'
+
+# Dependencies
+dependencies:
+  - 'package.json'
+  - 'package-lock.json'
+  - 'yarn.lock'
+
+# Configuration
+config:
+  - '.env*'
+  - '**/*config*'
+  - '.eslintrc*'
+  - '.prettierrc*'
+
+# Frontend (if applicable)
+frontend:
+  - 'public/**/*'
+  - 'client/**/*'
+  - '**/*.html'
+  - '**/*.css'
+
+# Kids guide specific
+kids-guide:
+  - 'docs/KIDS_GUIDE.md'
+  - '**/kid*'
+
+# Utilities
+utils:
+  - 'src/utils/**/*'
+  - 'src/helpers/**/*'
+
+# Cloud deployment
+cloud:
+  - '.devcontainer/**/*'
+  - '.gitpod.yml'
+  - '.replit'
+  - '**/cloud*'
+  - '**/auto-start*'

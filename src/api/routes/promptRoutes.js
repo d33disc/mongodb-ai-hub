@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Prompt = require('../../models/Prompt');
+const { authenticate, optionalAuth } = require('../../middleware/auth');
 
 // Get all prompts
-router.get('/', async (req, res) => {
+router.get('/', optionalAuth, async (req, res) => {
   try {
     const prompts = await Prompt.find().sort({ createdAt: -1 });
     res.json(prompts);
@@ -13,7 +14,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get a single prompt by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
   try {
     const prompt = await Prompt.findById(req.params.id);
     if (!prompt) {
@@ -26,14 +27,14 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new prompt
-router.post('/', async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   const prompt = new Prompt({
     title: req.body.title,
     content: req.body.content,
     tags: req.body.tags || [],
     category: req.body.category || 'general',
     model: req.body.model || 'gpt-4',
-    createdBy: req.body.createdBy || 'system',
+    createdBy: req.user.id,
     isPublic: req.body.isPublic || false,
     metadata: req.body.metadata || {}
   });
@@ -47,7 +48,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update a prompt
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
   try {
     const prompt = await Prompt.findById(req.params.id);
     if (!prompt) {
@@ -71,7 +72,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete a prompt
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   try {
     const prompt = await Prompt.findById(req.params.id);
     if (!prompt) {
@@ -86,7 +87,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Search prompts
-router.get('/search/text', async (req, res) => {
+router.get('/search/text', optionalAuth, async (req, res) => {
   try {
     const { query } = req.query;
     if (!query) {

@@ -1,25 +1,75 @@
 {
   "name": "mongodb-ai-hub",
-  "version": "0.1.0",
-  "description": "A specialized data management system for AI applications, built on MongoDB Atlas.",
+  "version": "1.0.0",
+  "description": "A specialized data management system for AI applications, built on MongoDB Atlas with auto-launch capabilities for cloud environments.",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "debug": "nodemon --inspect src/server.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.js",
+    "lint:fix": "eslint src/**/*.js --fix",
+    "format": "prettier --write src/**/*.js",
+    "format:check": "prettier --check src/**/*.js",
+    "auto-start": "bash .devcontainer/auto-start.sh",
+    "health-check": "curl -s http://localhost:3000/api/health || echo 'Server not running'",
+    "setup-cloud": "npm run auto-start",
+    "status": "npm run health-check && echo 'Use: npm run dev to start server'",
+    "validate": "npm run lint && npm run format:check && npm run test",
+    "precommit": "npm run lint:fix && npm run format && npm run test"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "express-rate-limit": "^7.5.1",
+    "express-validator": "^7.2.1",
+    "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.6.3"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "@babel/core": "^7.27.7",
+    "@babel/preset-env": "^7.27.2",
+    "babel-jest": "^30.0.2",
+    "eslint": "^9.29.0",
+    "jest": "^30.0.3",
+    "mongodb-memory-server": "^10.1.4",
+    "nodemon": "^3.1.10",
+    "prettier": "^3.6.2",
+    "supertest": "^7.1.1"
   },
   "engines": {
     "node": ">=14.0.0"
   },
-  "author": "",
-  "license": "MIT"
+  "keywords": [
+    "ai",
+    "mongodb",
+    "vector-store",
+    "prompts",
+    "authentication",
+    "api",
+    "cloud",
+    "auto-launch"
+  ],
+  "author": "d33disc",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/d33disc/mongodb-ai-hub.git"
+  },
+  "autoStart": {
+    "enabled": true,
+    "environments": [
+      "codespaces",
+      "gitpod",
+      "replit",
+      "cloud9"
+    ],
+    "port": 3000,
+    "healthCheck": "/api/health"
+  }
 }

@@ -1,0 +1,59 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "🚀 Auto-Start AI Hub",
+            "type": "shell",
+            "command": "bash",
+            "args": [".devcontainer/auto-start.sh"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "new",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "runOptions": {
+                "runOn": "folderOpen"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "📊 Check AI Hub Status",
+            "type": "shell",
+            "command": "curl",
+            "args": ["-s", "http://localhost:3000/api/health"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "🔄 Restart AI Hub",
+            "type": "shell",
+            "command": "bash",
+            "args": ["-c", "pkill -f 'node src/server.js' || true && sleep 2 && npm run dev"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "📝 View AI Hub Logs",
+            "type": "shell",
+            "command": "tail",
+            "args": ["-f", "/tmp/ai-hub.log"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        }
+    ]
+}

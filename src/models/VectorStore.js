@@ -22,46 +22,49 @@ const EmbeddingSchema = new mongoose.Schema({
 });
 
 // Schema for vector stores
-const VectorStoreSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true
+const VectorStoreSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    description: {
+      type: String,
+      default: ''
+    },
+    namespace: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    vectorDimension: {
+      type: Number,
+      required: true
+    },
+    embeddings: {
+      type: [EmbeddingSchema],
+      default: []
+    },
+    model: {
+      type: String,
+      required: true
+    },
+    createdBy: {
+      type: String,
+      default: 'system'
+    }
   },
-  description: {
-    type: String,
-    default: ''
-  },
-  namespace: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  vectorDimension: {
-    type: Number,
-    required: true
-  },
-  embeddings: {
-    type: [EmbeddingSchema],
-    default: []
-  },
-  model: {
-    type: String,
-    required: true
-  },
-  createdBy: {
-    type: String,
-    default: 'system'
+  {
+    timestamps: true
   }
-}, {
-  timestamps: true
-});
+);
 
 // Add text index for search
-VectorStoreSchema.index({ 
-  name: 'text', 
-  description: 'text', 
-  namespace: 'text' 
+VectorStoreSchema.index({
+  name: 'text',
+  description: 'text',
+  namespace: 'text'
 });
 
 const VectorStore = mongoose.model('VectorStore', VectorStoreSchema);

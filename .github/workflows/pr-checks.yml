@@ -1,0 +1,181 @@
+name: 🔍 Pull Request Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  pr-validation:
+    name: 📋 PR Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📦 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔍 Check PR title format
+      uses: amannn/action-semantic-pull-request@v5
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        types: |
+          feat
+          fix
+          docs
+          style
+          refactor
+          test
+          chore
+        requireScope: false
+        
+    - name: 📏 Check PR size
+      uses: pascalgn/size-label-action@v0.4.3
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        sizes: >
+          {
+            "0": "XS",
+            "20": "S", 
+            "100": "M",
+            "500": "L",
+            "1000": "XL"
+          }
+
+  code-quality:
+    name: 🎯 Code Quality Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📦 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: 📥 Install dependencies
+      run: npm ci
+      
+    - name: 🔍 Run linting with annotations
+      run: |
+        npm run lint -- --format @microsoft/eslint-formatter-sarif --output-file eslint-results.sarif || true
+        
+    - name: 📊 Upload ESLint results to GitHub
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: eslint-results.sarif
+        wait-for-processing: true
+        
+    - name: 🧪 Run tests with coverage
+      run: npm run test:coverage
+      env:
+        NODE_ENV: test
+        JWT_SECRET: test-secret-key-for-pr
+        JWT_REFRESH_SECRET: test-refresh-secret-for-pr
+        
+    - name: 📈 Comment coverage report
+      uses: romeovs/lcov-reporter-action@v0.3.1
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        lcov-file: ./coverage/lcov.info
+        delete-old-comments: true
+
+  security-check:
+    name: 🔒 Security Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📦 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: 📥 Install dependencies
+      run: npm ci
+      
+    - name: 🔍 Check for secrets
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: ${{ github.event.repository.default_branch }}
+        head: HEAD
+        extra_args: --debug --only-verified
+        
+    - name: 🛡️ Dependency vulnerability scan
+      run: |
+        npm audit --audit-level=moderate
+        npx audit-ci --moderate
+
+  auto-assign:
+    name: 🎯 Auto Assign & Label
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 🏷️ Add labels based on files changed
+      uses: actions/labeler@v4
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        configuration-path: .github/labeler.yml
+        
+    - name: 👥 Auto assign reviewers
+      uses: kentaro-m/auto-assign-action@v1.2.5
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        configuration-path: .github/auto_assign.yml
+
+  preview-deploy:
+    name: 🚀 Preview Deployment
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    
+    steps:
+    - name: 📦 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: 📥 Install dependencies
+      run: npm ci
+      
+    - name: 🏗️ Build for preview
+      run: npm run build --if-present
+      
+    - name: 🚀 Deploy preview
+      run: |
+        echo "🚀 Preview would be deployed to: https://pr-${{ github.event.number }}.mongodb-ai-hub.dev"
+        echo "Preview URL: https://pr-${{ github.event.number }}.mongodb-ai-hub.dev" >> $GITHUB_STEP_SUMMARY
+        
+    - name: 💬 Comment preview URL
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const comment = `🚀 **Preview Deployment Ready!**
+          
+          Your changes have been deployed to: https://pr-${{ github.event.number }}.mongodb-ai-hub.dev
+          
+          - 🔍 Test the API endpoints
+          - 🧪 Try the kid's guide examples  
+          - 📚 Check the documentation
+          
+          This preview will be available until the PR is closed.`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });

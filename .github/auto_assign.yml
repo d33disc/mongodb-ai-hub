@@ -1,0 +1,55 @@
+# 👥 Auto-assign configuration for MongoDB AI Hub
+
+# Reviewers to be added to pull requests (GitHub usernames)
+reviewers:
+  - d33disc
+
+# Number of reviewers to be added to pull requests
+numberOfReviewers: 1
+
+# A list of assignees, to be added to pull requests (GitHub usernames)
+assignees:
+  - d33disc
+
+# Number of assignees to be added to pull requests
+numberOfAssignees: 1
+
+# A list of keywords to be skipped for the assignment
+skipKeywords:
+  - wip
+  - draft
+
+# File patterns and their specific reviewers
+fileAssignees:
+  # Security-related files need security review
+  'src/middleware/auth.js':
+    - d33disc
+  'src/utils/jwt.js':
+    - d33disc
+    
+  # Documentation changes
+  '**/*.md':
+    - d33disc
+    
+  # Kids guide specifically
+  'docs/KIDS_GUIDE.md':
+    - d33disc
+    
+  # CI/CD changes
+  '.github/**/*':
+    - d33disc
+    
+  # Database models
+  'src/models/**/*':
+    - d33disc
+
+# Branch patterns and their specific reviewers
+branchAssignees:
+  'main':
+    - d33disc
+  'develop':
+    - d33disc
+  'feature/**':
+    - d33disc
+  'hotfix/**':
+    - d33disc

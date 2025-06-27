@@ -1,0 +1,53 @@
+# GitPod Configuration for MongoDB AI Hub Auto-Launch
+image: gitpod/workspace-mongodb
+
+# Tasks that run on workspace startup
+tasks:
+  - name: MongoDB Setup
+    init: |
+      echo "🔧 Setting up MongoDB..."
+      mkdir -p /workspace/data/db
+    command: |
+      echo "📦 Starting MongoDB..."
+      mongod --dbpath /workspace/data/db --nojournal --fork --logpath /workspace/mongodb.log
+      echo "✅ MongoDB started"
+  
+  - name: AI Hub Server
+    init: |
+      echo "📦 Installing dependencies..."
+      npm install
+      echo "🔑 Setting up environment..."
+      if [ ! -f .env ]; then
+        cp .env .env.backup 2>/dev/null || true
+        echo "MONGODB_URI=mongodb://localhost:27017/mongodb-ai-hub-gitpod" >> .env
+        echo "NODE_ENV=development" >> .env
+      fi
+    command: |
+      echo "🚀 Starting MongoDB AI Hub..."
+      npm run dev
+    openMode: split-right
+
+# Ports to expose
+ports:
+  - port: 3000
+    onOpen: notify
+    name: MongoDB AI Hub API
+    description: Main API server for AI Hub
+  - port: 27017
+    onOpen: ignore
+    name: MongoDB Database
+
+# VS Code extensions to install
+vscode:
+  extensions:
+    - mongodb.mongodb-vscode
+    - ms-vscode.vscode-json
+    - ms-vscode.rest-client
+    - bradlc.vscode-tailwindcss
+
+# GitHub integration
+github:
+  prebuilds:
+    master: true
+    branches: true
+    pullRequests: true

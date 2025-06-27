@@ -1,0 +1,99 @@
+name: 🎯 Auto Release
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+
+jobs:
+  release:
+    name: 🚀 Create Release
+    runs-on: ubuntu-latest
+    if: "contains(github.event.head_commit.message, 'feat:') || contains(github.event.head_commit.message, 'fix:') || contains(github.event.head_commit.message, 'BREAKING CHANGE:')"
+    
+    steps:
+    - name: 📦 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: 📥 Install dependencies
+      run: npm ci
+      
+    - name: 🧪 Run tests
+      run: npm test
+      env:
+        NODE_ENV: test
+        JWT_SECRET: test-secret-key-for-release
+        JWT_REFRESH_SECRET: test-refresh-secret-for-release
+        
+    - name: 📋 Generate changelog
+      id: changelog
+      run: |
+        echo "## What's Changed" > CHANGELOG_TEMP.md
+        git log --pretty=format:"- %s (%h)" $(git describe --tags --abbrev=0)..HEAD >> CHANGELOG_TEMP.md
+        echo "" >> CHANGELOG_TEMP.md
+        echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$(git describe --tags --abbrev=0)...HEAD" >> CHANGELOG_TEMP.md
+        
+    - name: 🏷️ Create release tag
+      id: tag_version
+      run: |
+        # Get current version from package.json
+        CURRENT_VERSION=$(node -p "require('./package.json').version")
+        
+        # Determine version bump based on commit message
+        if [[ "${{ github.event.head_commit.message }}" == *"BREAKING CHANGE:"* ]]; then
+          NEW_VERSION=$(npx semver $CURRENT_VERSION -i major)
+        elif [[ "${{ github.event.head_commit.message }}" == feat:* ]]; then
+          NEW_VERSION=$(npx semver $CURRENT_VERSION -i minor)
+        else
+          NEW_VERSION=$(npx semver $CURRENT_VERSION -i patch)
+        fi
+        
+        echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        
+    - name: 📝 Update package.json version
+      run: |
+        npm version ${{ steps.tag_version.outputs.new_version }} --no-git-tag-version
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add package.json
+        git commit -m "chore: bump version to ${{ steps.tag_version.outputs.new_version }}"
+        git push
+        
+    - name: 🎯 Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.tag_version.outputs.new_version }}
+        release_name: MongoDB AI Hub v${{ steps.tag_version.outputs.new_version }}
+        body_path: CHANGELOG_TEMP.md
+        draft: false
+        prerelease: false
+
+  deploy-docs:
+    name: 📚 Deploy Documentation
+    runs-on: ubuntu-latest
+    needs: release
+    
+    steps:
+    - name: 📦 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🚀 Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs
+        cname: mongodb-ai-hub.example.com

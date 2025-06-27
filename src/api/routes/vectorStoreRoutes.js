@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const VectorStore = require('../../models/VectorStore');
+const { authenticate, optionalAuth } = require('../../middleware/auth');
 
 // Get all vector stores
-router.get('/', async (req, res) => {
+router.get('/', optionalAuth, async (req, res) => {
   try {
     const vectorStores = await VectorStore.find().sort({ createdAt: -1 });
     res.json(vectorStores);
@@ -13,7 +14,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get a single vector store by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
   try {
     const vectorStore = await VectorStore.findById(req.params.id);
     if (!vectorStore) {
@@ -26,14 +27,14 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new vector store
-router.post('/', async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   const vectorStore = new VectorStore({
     name: req.body.name,
     description: req.body.description || '',
     namespace: req.body.namespace,
     vectorDimension: req.body.vectorDimension,
     model: req.body.model,
-    createdBy: req.body.createdBy || 'system',
+    createdBy: req.user.id,
     embeddings: req.body.embeddings || []
   });
 
@@ -46,7 +47,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update a vector store
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
   try {
     const vectorStore = await VectorStore.findById(req.params.id);
     if (!vectorStore) {
@@ -68,7 +69,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete a vector store
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   try {
     const vectorStore = await VectorStore.findById(req.params.id);
     if (!vectorStore) {
@@ -83,7 +84,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Add embedding to vector store
-router.post('/:id/embeddings', async (req, res) => {
+router.post('/:id/embeddings', authenticate, async (req, res) => {
   try {
     const vectorStore = await VectorStore.findById(req.params.id);
     if (!vectorStore) {
@@ -107,7 +108,7 @@ router.post('/:id/embeddings', async (req, res) => {
 });
 
 // Delete embedding from vector store
-router.delete('/:id/embeddings/:embeddingId', async (req, res) => {
+router.delete('/:id/embeddings/:embeddingId', authenticate, async (req, res) => {
   try {
     const vectorStore = await VectorStore.findById(req.params.id);
     if (!vectorStore) {

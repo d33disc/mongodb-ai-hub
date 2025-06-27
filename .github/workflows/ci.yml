@@ -1,0 +1,121 @@
+name: 🚀 Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    name: 🧪 Test Suite
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+        
+    steps:
+    - name: 📦 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: 📥 Install dependencies
+      run: npm ci
+      
+    - name: 🔍 Run linting
+      run: npm run lint
+      
+    - name: 🎨 Check formatting
+      run: npm run format:check
+      
+    - name: 🧪 Run tests
+      run: npm run test:coverage
+      env:
+        NODE_ENV: test
+        JWT_SECRET: test-secret-key-for-ci
+        JWT_REFRESH_SECRET: test-refresh-secret-for-ci
+        
+    - name: 📊 Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+
+  build:
+    name: 🏗️ Build Check
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: 📦 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: 📥 Install dependencies
+      run: npm ci
+      
+    - name: 🏗️ Build application
+      run: npm run build --if-present
+
+  security:
+    name: 🔒 Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📦 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: 📥 Install dependencies
+      run: npm ci
+      
+    - name: 🔍 Run security audit
+      run: npm audit --audit-level=high
+      
+    - name: 🛡️ Run CodeQL Analysis
+      uses: github/codeql-action/init@v3
+      with:
+        languages: javascript
+        
+    - name: 🔍 Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+
+  docs:
+    name: 📚 Documentation Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📦 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔍 Check for documentation files
+      run: |
+        echo "Checking required documentation..."
+        test -f README.md || (echo "❌ README.md missing" && exit 1)
+        test -f docs/KIDS_GUIDE.md || (echo "❌ KIDS_GUIDE.md missing" && exit 1)
+        test -f .env.example || (echo "❌ .env.example missing" && exit 1)
+        echo "✅ All documentation present"
+        
+    - name: 📝 Validate markdown
+      uses: articulate/actions-markdownlint@v1
+      with:
+        config: .markdownlint.json
+        files: '**/*.md'
+        ignore: node_modules

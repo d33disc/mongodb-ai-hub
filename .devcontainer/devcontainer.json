@@ -1,0 +1,46 @@
+{
+  "name": "MongoDB AI Hub - Auto Launch",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:18",
+  "features": {
+    "ghcr.io/devcontainers/features/mongodb:1": {
+      "version": "6.0"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "forwardPorts": [3000, 27017],
+  "portsAttributes": {
+    "3000": {
+      "label": "MongoDB AI Hub API",
+      "onAutoForward": "notify",
+      "protocol": "http"
+    },
+    "27017": {
+      "label": "MongoDB Database",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "npm install && chmod +x .devcontainer/auto-start.sh",
+  "postStartCommand": ".devcontainer/auto-start.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-json",
+        "mongodb.mongodb-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-vscode.rest-client",
+        "humao.rest-client"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "files.watcherExclude": {
+          "**/node_modules/**": true
+        }
+      }
+    }
+  },
+  "remoteEnv": {
+    "NODE_ENV": "development",
+    "MONGODB_URI": "mongodb://localhost:27017/mongodb-ai-hub-dev",
+    "PORT": "3000"
+  }
+}

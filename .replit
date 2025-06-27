@@ -1,0 +1,32 @@
+# Replit Configuration for MongoDB AI Hub
+run = "bash .devcontainer/auto-start.sh && npm run dev"
+modules = ["nodejs-18", "mongodb-6.0"]
+
+[deployment]
+run = ["bash", "-c", "npm start"]
+
+[env]
+NODE_ENV = "production"
+MONGODB_URI = "mongodb://localhost:27017/mongodb-ai-hub-replit"
+PORT = "3000"
+
+[nix]
+channel = "stable-22_11"
+
+[languages]
+
+[languages.javascript]
+pattern = "**/{*.js,*.jsx,*.ts,*.tsx,*.json}"
+
+[languages.javascript.languageServer]
+start = "typescript-language-server --stdio"
+
+[[ports]]
+localPort = 3000
+externalPort = 80
+exposeLocalhost = true
+
+[[ports]]
+localPort = 27017
+externalPort = 27017
+exposeLocalhost = false

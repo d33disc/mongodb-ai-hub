@@ -1,16 +1,15 @@
 /**
  * Vector search utilities for MongoDB Atlas Vector Search
- * 
+ *
  * This module provides functions for performing vector similarity search
  * using MongoDB Atlas Vector Search capabilities.
  */
 
 const VectorStore = require('../models/VectorStore');
-const mongoose = require('mongoose');
 
 /**
  * Performs cosine similarity search in a vector store
- * 
+ *
  * @param {string} vectorStoreId - The ID of the vector store to search in
  * @param {Array<number>} queryVector - The query vector to search with
  * @param {number} limit - Maximum number of results to return
@@ -53,9 +52,7 @@ async function similaritySearch(vectorStoreId, queryVector, limit = 5, filters =
     }
 
     // Sort by similarity (highest first) and limit results
-    return filteredResults
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, limit);
+    return filteredResults.sort((a, b) => b.similarity - a.similarity).slice(0, limit);
   } catch (error) {
     console.error('Similarity search error:', error);
     throw error;
@@ -64,7 +61,7 @@ async function similaritySearch(vectorStoreId, queryVector, limit = 5, filters =
 
 /**
  * Calculate cosine similarity between two vectors
- * 
+ *
  * @param {Array<number>} vectorA - First vector
  * @param {Array<number>} vectorB - Second vector
  * @returns {number} - Cosine similarity (between -1 and 1)

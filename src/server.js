@@ -6,6 +6,7 @@ require('dotenv').config();
 // Import routes
 const promptRoutes = require('./api/routes/promptRoutes');
 const vectorStoreRoutes = require('./api/routes/vectorStoreRoutes');
+const authRoutes = require('./api/routes/authRoutes');
 
 // Initialize Express
 const app = express();
@@ -18,6 +19,7 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/prompts', promptRoutes);
 app.use('/api/vectorstores', vectorStoreRoutes);
 
