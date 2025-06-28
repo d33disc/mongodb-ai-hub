@@ -1,0 +1,73 @@
+# 🏭 Production Dockerfile - Optimized for Performance & Security
+
+# Multi-stage build for smaller production image
+FROM node:20-alpine AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev dependencies for build)
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Run build steps (if any)
+RUN npm run build --if-present
+
+# Remove dev dependencies
+RUN npm prune --production
+
+# Production stage
+FROM node:20-alpine AS production
+
+# Install security updates and necessary packages
+RUN apk update && apk upgrade && \
+    apk add --no-cache curl tini && \
+    rm -rf /var/cache/apk/*
+
+# Create app directory
+WORKDIR /app
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Copy production dependencies and built application
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
+COPY --from=builder --chown=nodejs:nodejs /app/src ./src
+COPY --from=builder --chown=nodejs:nodejs /app/scripts ./scripts
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/logs /app/uploads /app/temp && \
+    chown -R nodejs:nodejs /app
+
+# Copy production configuration
+COPY --chown=nodejs:nodejs config/production.js ./config/
+
+# Switch to non-root user
+USER nodejs
+
+# Expose port
+EXPOSE 3000
+
+# Add metadata labels
+LABEL name="mongodb-ai-hub" \
+      version="1.0.0" \
+      description="MongoDB AI Hub - Production Ready" \
+      maintainer="d33disc" \
+      org.opencontainers.image.source="https://github.com/d33disc/mongodb-ai-hub"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/api/health || exit 1
+
+# Use tini as PID 1 for proper signal handling
+ENTRYPOINT ["/sbin/tini", "--"]
+
+# Start the application
+CMD ["node", "src/server.js"]

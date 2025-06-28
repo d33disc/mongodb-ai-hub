@@ -1,0 +1,264 @@
+# 🏭 Production Docker Compose - Multi-service MongoDB AI Hub
+# This configuration is optimized for production workloads
+
+version: '3.8'
+
+services:
+  # MongoDB AI Hub Application - Primary
+  app-primary:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: mongodb-ai-hub-app-primary
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      CLUSTER_ROLE: primary
+      MONGODB_URI: ${MONGODB_URI}
+      REDIS_URL: redis://redis-primary:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+    depends_on:
+      - redis-primary
+    volumes:
+      - app_logs:/app/logs
+      - app_uploads:/app/uploads
+    networks:
+      - ai-hub-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # MongoDB AI Hub Application - Secondary (for redundancy)
+  app-secondary:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: mongodb-ai-hub-app-secondary
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      CLUSTER_ROLE: secondary
+      MONGODB_URI: ${MONGODB_URI}
+      REDIS_URL: redis://redis-primary:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+    depends_on:
+      - redis-primary
+      - app-primary
+    volumes:
+      - app_logs:/app/logs
+      - app_uploads:/app/uploads
+    networks:
+      - ai-hub-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Primary (for caching and sessions)
+  redis-primary:
+    image: redis:7-alpine
+    container_name: mongodb-ai-hub-redis-primary
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - ai-hub-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.2'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Redis Replica (for high availability)
+  redis-replica:
+    image: redis:7-alpine
+    container_name: mongodb-ai-hub-redis-replica
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    command: redis-server --replicaof redis-primary 6379 --appendonly yes
+    depends_on:
+      - redis-primary
+    volumes:
+      - redis_replica_data:/data
+    networks:
+      - ai-hub-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          cpus: '0.1'
+          memory: 256M
+
+  # NGINX Load Balancer
+  nginx:
+    image: nginx:alpine
+    container_name: mongodb-ai-hub-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - app-primary
+      - app-secondary
+    networks:
+      - ai-hub-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mongodb-ai-hub-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - ai-hub-network
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mongodb-ai-hub-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - ai-hub-network
+
+  # Log Aggregation with Filebeat
+  filebeat:
+    image: elastic/filebeat:8.5.0
+    container_name: mongodb-ai-hub-filebeat
+    restart: unless-stopped
+    volumes:
+      - ./config/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - app_logs:/app/logs:ro
+      - nginx_logs:/nginx/logs:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - app-primary
+    networks:
+      - ai-hub-network
+    user: root
+
+  # Backup Service
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
+    container_name: mongodb-ai-hub-backup
+    restart: unless-stopped
+    environment:
+      MONGODB_URI: ${MONGODB_URI}
+      BACKUP_SCHEDULE: "0 2 * * *"
+      S3_BUCKET: ${BACKUP_S3_BUCKET}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - backup_data:/backups
+    networks:
+      - ai-hub-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+
+volumes:
+  app_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./logs
+  app_uploads:
+    driver: local
+  redis_data:
+    driver: local
+  redis_replica_data:
+    driver: local
+  nginx_logs:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  backup_data:
+    driver: local
+
+networks:
+  ai-hub-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

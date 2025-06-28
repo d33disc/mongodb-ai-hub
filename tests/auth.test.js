@@ -6,10 +6,9 @@
  */
 
 const request = require('supertest');
-const express = require('express');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-const authRoutes = require('../src/api/routes/authRoutes');
+const createTestServer = require('./test-server');
 const User = require('../src/models/User');
 
 let mongoServer;
@@ -35,10 +34,8 @@ describe('Authentication System', () => {
       await mongoose.connect(mongoUri);
     }
     
-    // Create test app
-    app = express();
-    app.use(express.json());
-    app.use('/api/auth', authRoutes);
+    // Create test app with standardized routes (no rate limiting)
+    app = createTestServer();
   });
 
   afterAll(async () => {
@@ -120,7 +117,7 @@ describe('Authentication System', () => {
       const response = await request(app)
         .post('/api/auth/register')
         .send(validUser)
-        .expect(400);
+        .expect(409);
 
       expect(response.body.success).toBe(false);
       expect(response.body.message).toContain('already exists');

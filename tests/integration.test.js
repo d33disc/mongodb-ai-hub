@@ -6,14 +6,11 @@
  */
 
 const request = require('supertest');
-const express = require('express');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
-// Import all routes
-const authRoutes = require('../src/api/routes/authRoutes');
-const promptRoutes = require('../src/api/routes/promptRoutes');
-const vectorStoreRoutes = require('../src/api/routes/vectorStoreRoutes');
+// Import test server
+const createTestServer = require('./test-server');
 
 let mongoServer;
 let app;
@@ -38,22 +35,8 @@ describe('MongoDB AI Hub - Full Integration Tests', () => {
       await mongoose.connect(mongoUri);
     }
     
-    // Create complete test app with all routes
-    app = express();
-    app.use(express.json());
-    app.use('/api/auth', authRoutes);
-    app.use('/api/prompts', promptRoutes);
-    app.use('/api/vectorstores', vectorStoreRoutes);
-    
-    // Add health check endpoint
-    app.get('/api/health', (req, res) => {
-      res.json({
-        status: 'ok',
-        message: 'MongoDB AI Data Hub API is running',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime()
-      });
-    });
+    // Create test app with standardized routes (no rate limiting)
+    app = createTestServer();
   });
 
   afterAll(async () => {
@@ -137,14 +120,19 @@ describe('MongoDB AI Hub - Full Integration Tests', () => {
 
   describe('Prompt Management Workflow', () => {
     let userToken;
+    let userId;
 
     beforeEach(async () => {
       // Register user and get token
       const registerResponse = await request(app)
         .post('/api/auth/register')
-        .send(testUser);
+        .send({
+          ...testUser,
+          email: 'prompt-test@test.com' // Use different email for this test
+        });
       
       userToken = registerResponse.body.data.tokens.accessToken;
+      userId = registerResponse.body.data.user._id;
     });
 
     test('should complete full prompt CRUD workflow', async () => {
@@ -180,16 +168,16 @@ describe('MongoDB AI Hub - Full Integration Tests', () => {
         .get('/api/prompts')
         .expect(200);
 
-      expect(getAllResponse.body.length).toBe(1);
-      expect(getAllResponse.body[0].title).toBe(promptData.title);
+      expect(getAllResponse.body.data.count).toBe(1);
+      expect(getAllResponse.body.data.prompts[0].title).toBe(promptData.title);
 
       // 3. Get specific prompt
       const getOneResponse = await request(app)
         .get(`/api/prompts/${promptId}`)
         .expect(200);
 
-      expect(getOneResponse.body.title).toBe(promptData.title);
-      expect(getOneResponse.body.content).toBe(promptData.content);
+      expect(getOneResponse.body.data.prompt.title).toBe(promptData.title);
+      expect(getOneResponse.body.data.prompt.content).toBe(promptData.content);
 
       // 4. Update prompt
       const updateData = {
@@ -234,14 +222,19 @@ describe('MongoDB AI Hub - Full Integration Tests', () => {
 
   describe('Vector Store Management Workflow', () => {
     let userToken;
+    let userId;
 
     beforeEach(async () => {
       // Register user and get token
       const registerResponse = await request(app)
         .post('/api/auth/register')
-        .send(testUser);
+        .send({
+          ...testUser,
+          email: 'vector-test@test.com' // Use different email for this test
+        });
       
       userToken = registerResponse.body.data.tokens.accessToken;
+      userId = registerResponse.body.data.user._id;
     });
 
     test('should complete full vector store CRUD workflow', async () => {
@@ -272,16 +265,16 @@ describe('MongoDB AI Hub - Full Integration Tests', () => {
         .get('/api/vectorstores')
         .expect(200);
 
-      expect(getAllResponse.body.length).toBe(1);
-      expect(getAllResponse.body[0].name).toBe(vectorStoreData.name);
+      expect(getAllResponse.body.data.count).toBe(1);
+      expect(getAllResponse.body.data.vectorStores[0].name).toBe(vectorStoreData.name);
 
       // 3. Get specific vector store
       const getOneResponse = await request(app)
         .get(`/api/vectorstores/${vectorStoreId}`)
         .expect(200);
 
-      expect(getOneResponse.body.name).toBe(vectorStoreData.name);
-      expect(getOneResponse.body.namespace).toBe(vectorStoreData.namespace);
+      expect(getOneResponse.body.data.vectorStore.name).toBe(vectorStoreData.name);
+      expect(getOneResponse.body.data.vectorStore.namespace).toBe(vectorStoreData.namespace);
 
       // 4. Add embedding to vector store
       const embeddingData = {
@@ -353,7 +346,7 @@ describe('MongoDB AI Hub - Full Integration Tests', () => {
       expect(healthResponse.body.status).toBe('ok');
       expect(healthResponse.body.message).toContain('MongoDB AI Data Hub API is running');
       expect(healthResponse.body.timestamp).toBeDefined();
-      expect(healthResponse.body.uptime).toBeDefined();
+      expect(healthResponse.body.environment).toBe('test');
     });
   });
 
@@ -375,7 +368,10 @@ describe('MongoDB AI Hub - Full Integration Tests', () => {
       // 3. Register user and get valid token
       const registerResponse = await request(app)
         .post('/api/auth/register')
-        .send(testUser);
+        .send({
+          ...testUser,
+          email: 'auth-test@test.com' // Use different email for this test
+        });
 
       const userToken = registerResponse.body.data.tokens.accessToken;
 
