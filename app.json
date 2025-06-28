@@ -1,0 +1,40 @@
+{
+  "name": "MongoDB AI Hub",
+  "description": "Production-ready AI data management system with MongoDB Atlas",
+  "repository": "https://github.com/d33disc/mongodb-ai-hub",
+  "logo": "https://github.com/d33disc/mongodb-ai-hub/raw/main/assets/logo.png",
+  "keywords": ["mongodb", "ai", "api", "jwt", "authentication"],
+  "addons": [],
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "env": {
+    "NODE_ENV": {
+      "description": "Node environment",
+      "value": "production"
+    },
+    "MONGODB_URI": {
+      "description": "MongoDB Atlas connection string",
+      "required": true
+    },
+    "JWT_SECRET": {
+      "description": "Secret key for JWT tokens",
+      "generator": "secret"
+    },
+    "JWT_REFRESH_SECRET": {
+      "description": "Secret key for JWT refresh tokens",
+      "generator": "secret"
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "standard-1x"
+    }
+  },
+  "scripts": {
+    "postdeploy": "echo 'Deployment complete!'"
+  }
+}

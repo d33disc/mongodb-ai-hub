@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: mongodb-ai-hub
+    runtime: node
+    buildCommand: npm install
+    startCommand: node src/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false # Set in Render dashboard
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+    healthCheckPath: /api/health
+    autoDeploy: true
